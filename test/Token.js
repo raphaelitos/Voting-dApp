@@ -1,111 +1,138 @@
-// This is an example test file. Hardhat will run every *.js file in `test/`,
-// so feel free to add new ones.
-
-// Hardhat tests are normally written with Mocha and Chai.
-
-// We import Chai to use its asserting functions here.
 const { expect } = require("chai");
-
-// We use `loadFixture` to share common setups (or fixtures) between tests.
-// Using this simplifies your tests and makes them run faster, by taking
-// advantage or Hardhat Network's snapshot functionality.
+const { ethers } = require("hardhat");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
-// `describe` is a Mocha function that allows you to organize your tests.
-// Having your tests organized makes debugging them easier. All Mocha
-// functions are available in the global scope.
-//
-// `describe` receives the name of a section of your test suite, and a
-// callback. The callback must define the tests of that section. This callback
-// can't be an async function.
-describe("Token contract", function () {
-  // We define a fixture to reuse the same setup in every test. We use
-  // loadFixture to run this setup once, snapshot that state, and reset Hardhat
-  // Network to that snapshot in every test.
-  async function deployTokenFixture() {
-    // Get the ContractFactory and Signers here.
-    const Token = await ethers.getContractFactory("Token");
-    const [owner, addr1, addr2] = await ethers.getSigners();
+describe("Turing Smart Contract", function () {
+  // Fixture para resetar o estado do contrato mais rapidamente entre os testes
+  async function deployTuringFixture() {
+    // Pegando as contas locais de teste do Hardhat
+    const [owner, roberta, nome1, nome2, nome3] = await ethers.getSigners();
 
-    // To deploy our contract, we just have to call Token.deploy() and await
-    // for it to be deployed(), which happens onces its transaction has been
-    // mined.
-    const hardhatToken = await Token.deploy();
+    // Fazendo o deploy do contrato
+    const Turing = await ethers.getContractFactory("Turing");
+    const turing = await Turing.deploy();
 
-    await hardhatToken.deployed();
+    // Como o contrato tem endereços hardcoded, vamos atualizá-los para as contas locais de teste
+    // O 'owner' (deployer) é um admin e pode rodar updateUser.
+    await turing.updateUser("roberta", roberta.address);
+    await turing.updateUser("nome1", nome1.address);
+    await turing.updateUser("nome2", nome2.address);
+    await turing.updateUser("nome3", nome3.address);
 
-    // Fixtures can return anything you consider useful for your tests
-    return { Token, hardhatToken, owner, addr1, addr2 };
+    return { turing, owner, roberta, nome1, nome2, nome3 };
   }
 
-  // You can nest describe calls to create subsections.
-  describe("Deployment", function () {
-    // `it` is another Mocha function. This is the one you use to define your
-    // tests. It receives the test name, and a callback function.
-//
-    // If the callback function is async, Mocha will `await` it.
-    it("Should set the right owner", async function () {
-      // We use loadFixture to setup our environment, and then assert that
-      // things went well
-      const { hardhatToken, owner } = await loadFixture(deployTokenFixture);
-
-      // Expect receives a value and wraps it in an assertion object. These
-      // objects have a lot of utility methods to assert values.
-
-      // This test expects the owner variable stored in the contract to be
-      // equal to our Signer's owner.
-      expect(await hardhatToken.owner()).to.equal(owner.address);
+  describe("Deployment e Setup", function () {
+    it("Deve definir o nome e símbolo corretos do token", async function () {
+      const { turing } = await loadFixture(deployTuringFixture);
+      expect(await turing.name()).to.equal("RaphaTuring");
+      expect(await turing.symbol()).to.equal("RT");
     });
 
-    it("Should assign the total supply of tokens to the owner", async function () {
-      const { hardhatToken, owner } = await loadFixture(deployTokenFixture);
-      const ownerBalance = await hardhatToken.balanceOf(owner.address);
-      expect(await hardhatToken.totalSupply()).to.equal(ownerBalance);
+    it("Deve mapear corretamente os usuários após o setup do teste", async function () {
+      const { turing, nome1 } = await loadFixture(deployTuringFixture);
+      expect(await turing.users("nome1")).to.equal(nome1.address);
+      expect(await turing.addresses(nome1.address)).to.equal("nome1");
     });
   });
 
-  describe("Transactions", function () {
-    it("Should transfer tokens between accounts", async function () {
-      const { hardhatToken, owner, addr1, addr2 } = await loadFixture(deployTokenFixture);
-      // Transfer 50 tokens from owner to addr1
-      await expect(hardhatToken.transfer(addr1.address, 50))
-        .to.changeTokenBalances(hardhatToken, [owner, addr1], [-50, 50]);
-
-      // Transfer 50 tokens from addr1 to addr2
-      // We use .connect(signer) to send a transaction from another account
-      await expect(hardhatToken.connect(addr1).transfer(addr2.address, 50))
-        .to.changeTokenBalances(hardhatToken, [addr1, addr2], [-50, 50]);
+  describe("Controle de Acesso (Administração)", function () {
+    it("Dono do contrato deve conseguir emitir tokens (issueToken)", async function () {
+      const { turing, owner, nome1 } = await loadFixture(deployTuringFixture);
+      
+      await turing.connect(owner).issueToken("nome1", 100);
+      expect(await turing.balanceOf(nome1.address)).to.equal(100);
     });
 
-    it("should emit Transfer events", async function () {
-      const { hardhatToken, owner, addr1, addr2 } = await loadFixture(deployTokenFixture);
-
-      // Transfer 50 tokens from owner to addr1
-      await expect(hardhatToken.transfer(addr1.address, 50))
-        .to.emit(hardhatToken, "Transfer").withArgs(owner.address, addr1.address, 50)
-
-      // Transfer 50 tokens from addr1 to addr2
-      // We use .connect(signer) to send a transaction from another account
-      await expect(hardhatToken.connect(addr1).transfer(addr2.address, 50))
-        .to.emit(hardhatToken, "Transfer").withArgs(addr1.address, addr2.address, 50)
+    it("Roberta deve conseguir pausar e retomar a votação (onlyAdmin)", async function () {
+      const { turing, roberta } = await loadFixture(deployTuringFixture);
+      
+      await expect(turing.connect(roberta).votingOff()).to.not.be.reverted;
+      await expect(turing.connect(roberta).votingOn()).to.not.be.reverted;
     });
 
-    it("Should fail if sender doesn't have enough tokens", async function () {
-      const { hardhatToken, owner, addr1 } = await loadFixture(deployTokenFixture);
-      const initialOwnerBalance = await hardhatToken.balanceOf(
-        owner.address
-      );
-
-      // Try to send 1 token from addr1 (0 tokens) to owner (1000 tokens).
-      // `require` will evaluate false and revert the transaction.
+    it("Usuário comum NAO deve conseguir emitir tokens", async function () {
+      const { turing, nome1 } = await loadFixture(deployTuringFixture);
+      
       await expect(
-        hardhatToken.connect(addr1).transfer(owner.address, 1)
-      ).to.be.revertedWith("Not enough tokens");
+        turing.connect(nome1).issueToken("nome2", 50)
+      ).to.be.revertedWith("Apenas o dono do contrato ou a Roberta podem executar essa acao!");
+    });
+  });
 
-      // Owner balance shouldn't have changed.
-      expect(await hardhatToken.balanceOf(owner.address)).to.equal(
-        initialOwnerBalance
-      );
+  describe("Lógica de Votação", function () {
+    it("Deve permitir o voto e emitir os tokens para o candidato", async function () {
+      const { turing, nome1, nome2 } = await loadFixture(deployTuringFixture);
+      
+      // nome1 vota em nome2 (2 Turings)
+      await expect(turing.connect(nome1).vote("nome2", 2))
+        .to.emit(turing, "Voted")
+        .withArgs("nome1", "nome2", 2);
+
+      // nome2 deve ter recebido 2 Turings
+      expect(await turing.balanceOf(nome2.address)).to.equal(2);
+    });
+
+    it("NAO deve permitir votar em si mesmo", async function () {
+      const { turing, nome1 } = await loadFixture(deployTuringFixture);
+      
+      await expect(
+        turing.connect(nome1).vote("nome1", 1)
+      ).to.be.revertedWith("Voce nao pode votar em si mesmo!");
+    });
+
+    it("NAO deve permitir votar duas vezes no mesmo candidato", async function () {
+      const { turing, nome1, nome2 } = await loadFixture(deployTuringFixture);
+      
+      await turing.connect(nome1).vote("nome2", 1);
+      
+      await expect(
+        turing.connect(nome1).vote("nome2", 1)
+      ).to.be.revertedWith("Voce ja votou neste codinome!");
+    });
+
+    it("NAO deve permitir votar com quantidade fora do intervalo (0, 2]", async function () {
+      const { turing, nome1, nome2 } = await loadFixture(deployTuringFixture);
+      
+      await expect(
+        turing.connect(nome1).vote("nome2", 0)
+      ).to.be.revertedWith("A quantidade de turings deve estar no intervalo (0, 2]");
+
+      await expect(
+        turing.connect(nome1).vote("nome2", 3)
+      ).to.be.revertedWith("A quantidade de turings deve estar no intervalo (0, 2]");
+    });
+
+    it("NAO deve permitir votar se a votação estiver desativada", async function () {
+      const { turing, owner, nome1, nome2 } = await loadFixture(deployTuringFixture);
+      
+      await turing.connect(owner).votingOff();
+      
+      await expect(
+        turing.connect(nome1).vote("nome2", 1)
+      ).to.be.revertedWith("Erro: a votacao deve estar ativa!");
+    });
+  });
+
+  describe("Recompensa de Votos", function () {
+    it("Deve recompensar o eleitor com 1 Turing após 10 votos", async function () {
+      const { turing, owner, nome1 } = await loadFixture(deployTuringFixture);
+      
+      // O saldo inicial do eleitor deve ser 0
+      expect(await turing.balanceOf(nome1.address)).to.equal(0);
+
+      // Vamos criar 10 candidatos dummy para o nome1 conseguir votar 10 vezes
+      for (let i = 0; i < 10; i++) {
+        let dummyCandidate = "candidato" + i;
+        // Gera um endereço aleatório e registra o usuário (requer permissão de admin)
+        await turing.connect(owner).updateUser(dummyCandidate, ethers.Wallet.createRandom().address);
+        
+        // nome1 vota no candidato gerado
+        await turing.connect(nome1).vote(dummyCandidate, 1);
+      }
+
+      // Após 10 votos em candidatos distintos, a lógica % 10 deve mintar 1 token para o nome1
+      expect(await turing.balanceOf(nome1.address)).to.equal(1);
     });
   });
 });
