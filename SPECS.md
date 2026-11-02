@@ -1,11 +1,5 @@
 # Turing dApp - Especificação
 
-*Documento de referência: Turing dApp - Especificação_2.pdf*
-
-Finalmente chegou a hora de criarmos a nossa criptomoeda Turing, e com base nela, nós desenvolveremos uma dApp para votarmos nos projetos finais da disciplina.
-
-Para isso, vamos tomar como base a dApp da atividade anterior (atividade 12) e fazer mudanças nela!
-
 ## ORIENTAÇÕES GERAIS DE EXECUÇÃO E TESTE
 Nesta **ENTREGA**, vocês usarão a blockchain local criada pelo HardHat. Com isso, os usuários e endereços (`addr`) criados serão "FAKE", conforme a tabela exemplo.
 
