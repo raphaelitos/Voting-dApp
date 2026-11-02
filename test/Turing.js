@@ -6,20 +6,18 @@ describe("Turing Smart Contract", function () {
   // Fixture para resetar o estado do contrato mais rapidamente entre os testes
   async function deployTuringFixture() {
     // Pegando as contas locais de teste do Hardhat
-    const [owner, roberta, nome1, nome2, nome3] = await ethers.getSigners();
+    // As contas 1..5 do Hardhat ja sao os enderecos hardcoded de nome1..nome5 no construtor.
+    // Apenas a professora (roberta) nao e uma conta do Hardhat, entao ela e remapeada.
+    const [owner, nome1, nome2, nome3, nome4, nome5, roberta] = await ethers.getSigners();
 
     // Fazendo o deploy do contrato
     const Turing = await ethers.getContractFactory("Turing");
     const turing = await Turing.deploy();
 
-    // Como o contrato tem endereços hardcoded, vamos atualizá-los para as contas locais de teste
     // O 'owner' (deployer) é um admin e pode rodar updateUser.
     await turing.updateUser("roberta", roberta.address);
-    await turing.updateUser("nome1", nome1.address);
-    await turing.updateUser("nome2", nome2.address);
-    await turing.updateUser("nome3", nome3.address);
 
-    return { turing, owner, roberta, nome1, nome2, nome3 };
+    return { turing, owner, roberta, nome1, nome2, nome3, nome4, nome5 };
   }
 
   describe("Deployment e Setup", function () {
@@ -96,11 +94,11 @@ describe("Turing Smart Contract", function () {
       
       await expect(
         turing.connect(nome1).vote("nome2", 0)
-      ).to.be.revertedWith("A quantidade de turings deve estar no intervalo (0, 2]");
+      ).to.be.revertedWith("A quantidade de turings deve ser maior que 0 e menor ou igual a 2");
 
       await expect(
         turing.connect(nome1).vote("nome2", 3)
-      ).to.be.revertedWith("A quantidade de turings deve estar no intervalo (0, 2]");
+      ).to.be.revertedWith("A quantidade de turings deve ser maior que 0 e menor ou igual a 2");
     });
 
     it("NAO deve permitir votar se a votação estiver desativada", async function () {
@@ -132,6 +130,86 @@ describe("Turing Smart Contract", function () {
       }
 
       // Após 10 votos em candidatos distintos, a lógica % 10 deve mintar 1 token para o nome1
+      expect(await turing.balanceOf(nome1.address)).to.equal(1);
+    });
+  });
+
+  describe("Requisitos adicionais da especificação", function () {
+    it("Nao deve haver minting no construtor (supply inicial = 0)", async function () {
+      const { turing } = await loadFixture(deployTuringFixture);
+      expect(await turing.totalSupply()).to.equal(0);
+    });
+
+    it("Constructor deve inicializar os usuarios da tabela", async function () {
+      const { turing, nome1, nome2, nome3, nome4, nome5 } = await loadFixture(deployTuringFixture);
+      expect(await turing.users("nome1")).to.equal(nome1.address);
+      expect(await turing.users("nome2")).to.equal(nome2.address);
+      expect(await turing.users("nome3")).to.equal(nome3.address);
+      expect(await turing.users("nome4")).to.equal(nome4.address);
+      expect(await turing.users("nome5")).to.equal(nome5.address);
+    });
+
+    it("updateUser: admin atualiza o endereco e o antigo perde acesso", async function () {
+      const { turing, owner, nome1, nome2 } = await loadFixture(deployTuringFixture);
+      const novo = ethers.Wallet.createRandom().connect(ethers.provider);
+      await turing.connect(owner).updateUser("nome1", novo.address);
+      expect(await turing.users("nome1")).to.equal(novo.address);
+      expect(await turing.addresses(nome1.address)).to.equal("");
+      await expect(turing.connect(nome1).vote("nome2", 1))
+        .to.be.revertedWith("Voce nao possui permissao para votar!");
+    });
+
+    it("updateUser: usuario comum nao pode executar", async function () {
+      const { turing, nome1 } = await loadFixture(deployTuringFixture);
+      await expect(turing.connect(nome1).updateUser("nome1", nome1.address))
+        .to.be.revertedWith("Apenas o dono do contrato ou a Roberta podem executar essa acao!");
+    });
+
+    it("updateUser: codinome vazio deve reverter", async function () {
+      const { turing, owner, nome1 } = await loadFixture(deployTuringFixture);
+      await expect(turing.connect(owner).updateUser("", nome1.address))
+        .to.be.revertedWith("Erro: codinome nao pode ser vazio");
+    });
+
+    it("updateUser: nao permite o mesmo endereco em dois codinomes", async function () {
+      const { turing, owner, nome1 } = await loadFixture(deployTuringFixture);
+      await expect(turing.connect(owner).updateUser("nome2", nome1.address))
+        .to.be.revertedWith("Erro: endereco ja pertence a outro codinome");
+    });
+
+    it("votingOn/votingOff: apenas admin; votingOn reabre a votacao", async function () {
+      const { turing, owner, nome1 } = await loadFixture(deployTuringFixture);
+      await expect(turing.connect(nome1).votingOff())
+        .to.be.revertedWith("Apenas o dono do contrato ou a Roberta podem executar essa acao!");
+      await expect(turing.connect(nome1).votingOn())
+        .to.be.revertedWith("Apenas o dono do contrato ou a Roberta podem executar essa acao!");
+      await turing.connect(owner).votingOff();
+      await turing.connect(owner).votingOn();
+      await expect(turing.connect(nome1).vote("nome2", 1)).to.not.be.reverted;
+    });
+
+    it("issueToken: codinome inexistente deve reverter", async function () {
+      const { turing, owner } = await loadFixture(deployTuringFixture);
+      await expect(turing.connect(owner).issueToken("ninguem", 1))
+        .to.be.revertedWith("Usuario nao existe");
+    });
+
+    it("vote: endereco nao autorizado nao pode votar", async function () {
+      const { turing } = await loadFixture(deployTuringFixture);
+      const [, , , , , , , estranho] = await ethers.getSigners();
+      await expect(turing.connect(estranho).vote("nome2", 1))
+        .to.be.revertedWith("Voce nao possui permissao para votar!");
+    });
+
+    it("vote: o 9o voto nao rende bonus, o 10o sim (e so ele)", async function () {
+      const { turing, owner, nome1 } = await loadFixture(deployTuringFixture);
+      for (let i = 0; i < 9; i++) {
+        await turing.connect(owner).updateUser("c" + i, ethers.Wallet.createRandom().address);
+        await turing.connect(nome1).vote("c" + i, 1);
+      }
+      expect(await turing.balanceOf(nome1.address)).to.equal(0);
+      await turing.connect(owner).updateUser("c9", ethers.Wallet.createRandom().address);
+      await turing.connect(nome1).vote("c9", 1);
       expect(await turing.balanceOf(nome1.address)).to.equal(1);
     });
   });

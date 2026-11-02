@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.17;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -50,9 +50,21 @@ contract Turing is ERC20 {
 
     function updateUser(string memory codinome, address user_addr) public onlyAdmin() {
         require(!codinome.equal(""), "Erro: codinome nao pode ser vazio");
-        
+        require(user_addr != address(0), "Erro: endereco invalido");
+
+        // Evita que o mesmo endereco responda por dois codinomes (corromperia `addresses`)
+        string memory current = addresses[user_addr];
+        require(
+            bytes(current).length == 0 || current.equal(codinome),
+            "Erro: endereco ja pertence a outro codinome"
+        );
+
+        // So apaga o mapeamento reverso antigo se ele realmente apontar para este codinome
         address old_add = users[codinome];
-        delete addresses[old_add]; 
+        if (old_add != address(0) && addresses[old_add].equal(codinome)) {
+            delete addresses[old_add];
+        }
+
         users[codinome] = user_addr;
         addresses[user_addr] = codinome;
     }
