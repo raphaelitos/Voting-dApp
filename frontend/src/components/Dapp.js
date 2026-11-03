@@ -19,6 +19,7 @@ import { VoteForm } from "./VoteForm";
 import { AdminPanel } from "./AdminPanel";
 import { TransactionErrorMessage } from "./TransactionErrorMessage";
 import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
+import { WalletPromptMessage } from "./WalletPromptMessage";
 
 // Este componente:
 //   1. conecta a carteira e garante a rede local do Hardhat;
@@ -32,6 +33,7 @@ export function Dapp() {
   const [contractError, setContractError] = useState();
   const [tokenData, setTokenData] = useState();
   const [snapshot, setSnapshot] = useState();
+  const [awaitingWallet, setAwaitingWallet] = useState(false);
   const [txBeingSent, setTxBeingSent] = useState();
   const [txError, setTxError] = useState();
   const [notice, setNotice] = useState();
@@ -59,20 +61,21 @@ export function Dapp() {
   }, []);
 
   const connectWallet = useCallback(async () => {
+    setAwaitingWallet(true);
     try {
       const [selected] = await window.ethereum.request({ method: "eth_requestAccounts" });
       if (selected && (await ensureNetwork())) setAccount(selected);
     } catch (error) {
       if (!isUserRejection(error)) setNetworkError(friendlyError(error));
+    } finally {
+      setAwaitingWallet(false);
     }
   }, [ensureNetwork]);
-
-  // Reconecta sozinho se o site ja foi autorizado (nao abre pop-up), e reage a
-  // troca de conta / troca de rede na carteira.
 
   // Abre o seletor de contas da carteira (MetaMask) para autorizar/escolher outra conta.
   // Sem isso, o site so enxerga as contas que ja foram conectadas a ele.
   const switchAccount = useCallback(async () => {
+    setAwaitingWallet(true);
     try {
       await window.ethereum.request({
         method: "wallet_requestPermissions",
@@ -87,10 +90,13 @@ export function Dapp() {
       }
     } catch (error) {
       if (!isUserRejection(error)) setTxError(friendlyError(error));
+    } finally {
+      setAwaitingWallet(false);
     }
   }, [account]);
 
-
+  // Reconecta sozinho se o site ja foi autorizado (nao abre pop-up), e reage a
+  // troca de conta / troca de rede na carteira.
   useEffect(() => {
     if (!window.ethereum) return undefined;
 
@@ -134,10 +140,24 @@ export function Dapp() {
     contractRef.current = contract;
     setContractError(undefined);
 
+    // Cada leitura (1) confirma que o contrato existe neste no e (2) le o estado.
+    // Se o `hardhat node` foi reiniciado sem novo deploy, o endereco fica vazio: aviso
+    // claro (em vez do erro tecnico do ethers) e recuperacao automatica apos o deploy.
+    let tokenLoaded = false;
     // Ignora respostas antigas se varias leituras estiverem em voo.
     const refresh = async () => {
       const mine = ++seq;
       try {
+        if ((await provider.getCode(contractAddress.Turing)) === "0x") {
+          throw new Error(
+            "Contrato não encontrado neste endereço (o nó do Hardhat foi reiniciado?). Rode o deploy novamente: npx hardhat run scripts/deploy.js --network localhost"
+          );
+        }
+        if (!tokenLoaded) {
+          const [name, symbol] = await Promise.all([contract.name(), contract.symbol()]);
+          if (!cancelled) setTokenData({ name, symbol });
+          tokenLoaded = true;
+        }
         const next = await loadSnapshot(contract, account);
         if (!cancelled && mine === seq) {
           setSnapshot(next);
@@ -148,22 +168,7 @@ export function Dapp() {
       }
     };
     refreshRef.current = refresh;
-
-    (async () => {
-      try {
-        // Se o no do Hardhat foi reiniciado, o contrato deixa de existir.
-        if ((await provider.getCode(contractAddress.Turing)) === "0x") {
-          throw new Error(
-            "Contrato não encontrado neste endereço. Rode o deploy novamente: npx hardhat run scripts/deploy.js --network localhost"
-          );
-        }
-        const [name, symbol] = await Promise.all([contract.name(), contract.symbol()]);
-        if (!cancelled) setTokenData({ name, symbol });
-        await refresh();
-      } catch (error) {
-        if (!cancelled) setContractError(friendlyError(error));
-      }
-    })();
+    refresh();
 
     // Todo mint (vote, bonus, issueToken) emite Transfer: relemos o estado na hora.
     contract.on("Transfer", refresh);
@@ -184,7 +189,9 @@ export function Dapp() {
     setTxError(undefined);
     setNotice(undefined);
     try {
+      setAwaitingWallet(true);
       const tx = await action(contractRef.current);
+      setAwaitingWallet(false);
       setTxBeingSent(tx.hash);
       const receipt = await tx.wait();
       if (receipt.status === 0) throw new Error("A transação falhou.");
@@ -197,6 +204,7 @@ export function Dapp() {
       setTxError(friendlyError(error));
       return false;
     } finally {
+      setAwaitingWallet(false);
       setTxBeingSent(undefined);
     }
   }, []);
@@ -224,6 +232,7 @@ export function Dapp() {
         connectWallet={connectWallet}
         networkError={networkError}
         dismiss={() => setNetworkError(undefined)}
+        waiting={awaitingWallet}
       />
     );
   }
@@ -246,12 +255,13 @@ export function Dapp() {
 
   if (!snapshot || !tokenData) return <Loading />;
 
-  const busy = txBeingSent !== undefined;
+  const busy = txBeingSent !== undefined || awaitingWallet;
 
   return (
     <div className="container app-container">
       <Header tokenData={tokenData} snapshot={snapshot} onSwitchAccount={switchAccount} />
 
+      {awaitingWallet && <WalletPromptMessage />}
       {txBeingSent && <WaitingForTransactionMessage txHash={txBeingSent} />}
       {txError && (
         <TransactionErrorMessage message={txError} dismiss={() => setTxError(undefined)} />

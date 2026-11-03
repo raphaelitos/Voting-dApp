@@ -48,6 +48,9 @@ export function friendlyError(error) {
   if (/nonce/i.test(all)) {
     return "Nonce inválido. No MetaMask: Configurações > Avançado > Limpar dados da aba de atividade.";
   }
+  if (/call revert exception|CALL_EXCEPTION/i.test(all)) {
+    return "Não foi possível ler o contrato. Confira se o deploy foi feito nesta rede (npx hardhat run scripts/deploy.js --network localhost).";
+  }
   const first = error?.reason || error?.message || "Erro desconhecido";
   return String(first).slice(0, 200);
 }
