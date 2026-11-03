@@ -11,7 +11,8 @@ Projeto em [Hardhat v2](https://v2.hardhat.org/) (ethers v5). A especificação 
 - **Admins:** o deployer (`owner`) e a professora (`users["roberta"]`). Consulta via `isAdmin(address)`.
 - **Votação:** `isVotingActive()`; `votingOn()` / `votingOff()` (admin).
 - **`vote(codinome, qtde)`:** votação ativa, eleitor autorizado, sem auto-voto, `0 < qtde <= 2`, um voto por par (eleitor → candidato).
-  Minta `qtde` Turings ao candidato e, a cada 10 votos do eleitor, 1 Turing ao próprio eleitor. Emite `Voted`.
+    Minta `qtde` Turings ao candidato e, a cada 10 votos do eleitor, 1 Turing ao próprio eleitor.
+    Os mints emitem o `Transfer(0x0 → destino)` padrão do ERC-20, que serve de base para o ranking.
 - `decimals()` = 0 (Turing é indivisível).
 
 ## Uso
