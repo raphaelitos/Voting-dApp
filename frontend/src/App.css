@@ -1,0 +1,81 @@
+:root {
+  --bg: #f4f6fb;
+  --ink: #1d2433;
+  --muted: #6b7385;
+  --brand: #4f46e5;
+  --brand-2: #7c3aed;
+  --ok: #16a34a;
+  --off: #dc2626;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.app-container { max-width: 1040px; padding-top: 24px; padding-bottom: 40px; }
+
+.app-header {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #fff;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.25);
+}
+.app-title { font-size: 1.7rem; font-weight: 700; margin: 0; }
+.app-subtitle { opacity: 0.85; }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 0.9rem;
+}
+.status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.status-on .status-dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+.status-off .status-dot { background: #f87171; }
+
+.user-bar {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+  gap: 12px; margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+}
+.user-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; }
+.user-value .text-muted { color: rgba(255, 255, 255, 0.75) !important; }
+
+.app-card { border: 0; border-radius: 14px; box-shadow: 0 2px 12px rgba(20, 30, 60, 0.08); margin-bottom: 20px; }
+.app-card-admin { border-top: 4px solid #f59e0b; }
+
+.ranking { list-style: none; margin: 0; padding: 0; }
+.ranking-item {
+  display: grid; grid-template-columns: 44px 1fr 1.2fr 80px; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 10px; margin-bottom: 6px;
+}
+.ranking-item:nth-child(odd) { background: #f8f9fd; }
+.ranking-me { outline: 2px solid var(--brand); background: #eef0ff !important; }
+.ranking-pos { font-size: 1.2rem; text-align: center; }
+.ranking-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.ranking-bar { background: #e6e9f4; border-radius: 999px; height: 10px; overflow: hidden; }
+.ranking-bar-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand), var(--brand-2)); transition: width 0.4s ease;
+}
+.ranking-balance { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.connect-screen { display: flex; justify-content: center; padding-top: 12vh; }
+.connect-card {
+  background: #fff; border-radius: 16px; padding: 32px; text-align: center; max-width: 460px;
+  box-shadow: 0 8px 30px rgba(20, 30, 60, 0.12);
+}
+.connect-card .app-title { color: var(--brand); margin-bottom: 12px; }
+
+.loading-overlay {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(244, 246, 251, 0.7); z-index: 10;
+}
+
+@media (max-width: 576px) {
+  .ranking-item { grid-template-columns: 36px 1fr 70px; }
+  .ranking-bar { display: none; }
+}

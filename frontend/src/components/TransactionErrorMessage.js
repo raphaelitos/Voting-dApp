@@ -2,15 +2,9 @@ import React from "react";
 
 export function TransactionErrorMessage({ message, dismiss }) {
   return (
-    <div className="alert alert-danger" role="alert">
-      Error sending transaction: {message.substring(0, 100)}
-      <button
-        type="button"
-        className="close"
-        data-dismiss="alert"
-        aria-label="Close"
-        onClick={dismiss}
-      >
+    <div className="alert alert-danger alert-dismissible" role="alert" data-testid="tx-error">
+      <strong>Não foi possível concluir:</strong> {message}
+      <button type="button" className="close" aria-label="Fechar" onClick={dismiss}>
         <span aria-hidden="true">&times;</span>
       </button>
     </div>

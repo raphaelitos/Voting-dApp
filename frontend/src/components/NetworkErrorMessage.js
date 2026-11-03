@@ -2,15 +2,9 @@ import React from "react";
 
 export function NetworkErrorMessage({ message, dismiss }) {
   return (
-    <div className="alert alert-danger" role="alert">
+    <div className="alert alert-danger alert-dismissible" role="alert">
       {message}
-      <button
-        type="button"
-        className="close"
-        data-dismiss="alert"
-        aria-label="Close"
-        onClick={dismiss}
-      >
+      <button type="button" className="close" aria-label="Fechar" onClick={dismiss}>
         <span aria-hidden="true">&times;</span>
       </button>
     </div>
