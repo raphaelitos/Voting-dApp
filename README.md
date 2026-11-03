@@ -1,90 +1,44 @@
-# Hardhat Boilerplate
+# Turing dApp
 
-This repository contains a sample project that you can use as the starting point
-for your Ethereum project. It's also a great fit for learning the basics of
-smart contract development.
+Token ERC-20 (`Turing`) emitido sob demanda por votação entre usuários pré-autorizados.
+Projeto em [Hardhat v2](https://v2.hardhat.org/) (ethers v5). A especificação completa está em [`SPECS.md`](./SPECS.md).
 
-This project is intended to be used with the
-[Hardhat Beginners Tutorial](https://hardhat.org/tutorial), but you should be
-able to follow it by yourself by reading the README and exploring its
-`contracts`, `tests`, `scripts` and `frontend` directories.
+## Como funciona
 
-## Quick start
+- **Sem supply inicial** ("Uncapped Lazy Supply"): Turings só nascem via `issueToken` (admin) ou `vote`.
+- **Identidade = codinome.** O contrato mantém `users[codinome] → endereço` e o reverso `addresses[endereço] → codinome`.
+  Votos (`hasVote`) e contagem (`voteCount`) são indexados por codinome, então trocar o endereço de alguém (`updateUser`) preserva seu histórico.
+- **Admins:** o deployer (`owner`) e a professora (`users["roberta"]`). Consulta via `isAdmin(address)`.
+- **Votação:** `isVotingActive()`; `votingOn()` / `votingOff()` (admin).
+- **`vote(codinome, qtde)`:** votação ativa, eleitor autorizado, sem auto-voto, `0 < qtde <= 2`, um voto por par (eleitor → candidato).
+  Minta `qtde` Turings ao candidato e, a cada 10 votos do eleitor, 1 Turing ao próprio eleitor. Emite `Voted`.
+- `decimals()` = 0 (Turing é indivisível).
 
-The first things you need to do are cloning this repository and installing its
-dependencies:
+## Uso
 
 ```sh
-git clone https://github.com/NomicFoundation/hardhat-boilerplate.git
-cd hardhat-boilerplate
 npm install
+npx hardhat test                                          # testes
+npx hardhat node                                          # blockchain local (terminal 1)
+npx hardhat run scripts/deploy.js --network localhost     # deploy (terminal 2)
+npx hardhat faucet <endereco> --network localhost         # envia 1 ETH fake para uma carteira
 ```
 
-Once installed, let's run Hardhat's testing network:
+O deploy grava ABI e endereço em `frontend/src/contracts/` para o frontend.
 
-```sh
-npx hardhat node
-```
+## Estrutura
 
-Then, on a new terminal, go to the repository's root folder and run this to
-deploy your contract:
+| Caminho | Conteúdo |
+| --- | --- |
+| `contracts/Turing.sol` | Contrato (OpenZeppelin 4.9 `ERC20`) |
+| `test/Turing.js` | Testes (Mocha/Chai + hardhat-chai-matchers) |
+| `scripts/deploy.js` | Deploy + exporta artefatos para o frontend |
+| `tasks/faucet.js` | Task auxiliar: envia ETH fake |
+| `frontend/` | dApp React (em desenvolvimento) |
 
-```sh
-npx hardhat run scripts/deploy.js --network localhost
-```
+## Observações
 
-Finally, we can run the frontend with:
+- OpenZeppelin está na **4.9.x** de propósito: a 5.x gera opcodes Cancun (`mcopy`) que o Hardhat 2.12 não executa.
+- `Invalid nonce` no MetaMask ao reiniciar `npx hardhat node`: `Configurações > Avançado > Limpar dados da aba de atividade`.
 
-```sh
-cd frontend
-npm install
-npm start
-```
-
-Open [http://localhost:3000/](http://localhost:3000/) to see your Dapp. You will
-need to have [Coinbase Wallet](https://www.coinbase.com/wallet) or [Metamask](https://metamask.io) installed and listening to
-`localhost 8545`.
-
-## User Guide
-
-You can find detailed instructions on using this repository and many tips in [its documentation](https://hardhat.org/tutorial).
-
-- [Writing and compiling contracts](https://hardhat.org/tutorial/writing-and-compiling-contracts/)
-- [Setting up the environment](https://hardhat.org/tutorial/setting-up-the-environment/)
-- [Testing Contracts](https://hardhat.org/tutorial/testing-contracts/)
-- [Setting up your wallet](https://hardhat.org/tutorial/boilerplate-project#how-to-use-it)
-- [Hardhat's full documentation](https://hardhat.org/docs/)
-
-For a complete introduction to Hardhat, refer to [this guide](https://hardhat.org/getting-started/#overview).
-
-## What's Included?
-
-This repository uses our recommended hardhat setup, by using our [`@nomicfoundation/hardhat-toolbox`](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-toolbox). When you use this plugin, you'll be able to:
-
-- Deploy and interact with your contracts using [ethers.js](https://docs.ethers.io/v5/) and the [`hardhat-ethers`](https://hardhat.org/hardhat-runner/plugins/nomiclabs-hardhat-ethers) plugin.
-- Test your contracts with [Mocha](https://mochajs.org/), [Chai](https://chaijs.com/) and our own [Hardhat Chai Matchers](https://hardhat.org/hardhat-chai-matchers) plugin.
-- Interact with Hardhat Network with our [Hardhat Network Helpers](https://hardhat.org/hardhat-network-helpers).
-- Verify the source code of your contracts with the [hardhat-etherscan](https://hardhat.org/hardhat-runner/plugins/nomiclabs-hardhat-etherscan) plugin.
-- Get metrics on the gas used by your contracts with the [hardhat-gas-reporter](https://github.com/cgewecke/hardhat-gas-reporter) plugin.
-- Measure your tests coverage with [solidity-coverage](https://github.com/sc-forks/solidity-coverage).
-
-This project also includes [a sample frontend/Dapp](./frontend), which uses [Create React App](https://github.com/facebook/create-react-app).
-
-## Troubleshooting
-
-- `Invalid nonce` errors: if you are seeing this error on the `npx hardhat node`
-  console, try resetting your Metamask account. This will reset the account's
-  transaction history and also the nonce. Open Metamask, click on your account
-  followed by `Settings > Advanced > Clear activity tab data`.
-
-## Setting up your editor
-
-[Hardhat for Visual Studio Code](https://hardhat.org/hardhat-vscode) is the official Hardhat extension that adds advanced support for Solidity to VSCode. If you use Visual Studio Code, give it a try!
-
-## Getting help and updates
-
-If you need help with this project, or with Hardhat in general, please read [this guide](https://hardhat.org/hardhat-runner/docs/guides/getting-help) to learn where and how to get it.
-
-For the latest news about Hardhat, [follow us on Twitter](https://twitter.com/HardhatHQ), and don't forget to star [our GitHub repository](https://github.com/NomicFoundation/hardhat)!
-
-**Happy _building_!**
+Baseado no [hardhat-boilerplate](https://github.com/NomicFoundation/hardhat-boilerplate) (MIT).

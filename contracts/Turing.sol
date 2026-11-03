@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.17;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -14,9 +14,7 @@ contract Turing is ERC20 {
     
     // Chave primária (string voter) => (Chave Secundária (string candidate) => Valor Final (bool))    
     mapping(string => mapping(string => bool)) public hasVote;
-    
     mapping(string => uint256) public voteCount;
-    event Voted(string indexed voter, string indexed candidate, uint256 amount);
 
     function decimals() public view virtual override returns (uint8) {
         return 0;
@@ -40,19 +38,42 @@ contract Turing is ERC20 {
         owner = msg.sender;
     }
 
+    function _isAdmin(address account) internal view returns (bool) {
+        return account == owner || account == users["roberta"];
+    }
+
     modifier onlyAdmin() {
         require(
-            msg.sender == owner || msg.sender == users["roberta"],
+            _isAdmin(msg.sender),
             "Apenas o dono do contrato ou a Roberta podem executar essa acao!"
         );
         _;
     }
 
+    function isAdmin(address account) public view returns (bool) {
+        return _isAdmin(account);
+    }
+
+    function isVotingActive() public view returns (bool) {
+        return voting;
+    }
+
     function updateUser(string memory codinome, address user_addr) public onlyAdmin() {
         require(!codinome.equal(""), "Erro: codinome nao pode ser vazio");
-        
+        require(user_addr != address(0), "Erro: endereco invalido");
+
+        string memory current = addresses[user_addr];
+        require(
+            bytes(current).length == 0 || current.equal(codinome),
+            "Erro: endereco ja pertence a outro codinome"
+        );
+
+        // So apaga o mapeamento reverso antigo se ele realmente apontar para este codinome
         address old_add = users[codinome];
-        delete addresses[old_add]; 
+        if (old_add != address(0) && addresses[old_add].equal(codinome)) {
+            delete addresses[old_add];
+        }
+
         users[codinome] = user_addr;
         addresses[user_addr] = codinome;
     }
@@ -93,6 +114,5 @@ contract Turing is ERC20 {
             _mint(msg.sender, 1);
         }
 
-        emit Voted(voterCodinome, codinome, qtde_Turings);
     }
 }

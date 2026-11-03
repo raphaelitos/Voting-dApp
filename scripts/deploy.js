@@ -1,5 +1,4 @@
-// This is a script for deploying your contracts. You can adapt it to deploy
-// yours, or create new ones.
+// Deploy do contrato Turing. Uso: npx hardhat run scripts/deploy.js --network localhost
 
 const path = require("path");
 
@@ -22,17 +21,17 @@ async function main() {
 
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const Token = await ethers.getContractFactory("Turing");
-  const token = await Token.deploy();
-  await token.deployed();
+  const Turing = await ethers.getContractFactory("Turing");
+  const turing = await Turing.deploy();
+  await turing.deployed();
 
-  console.log("Token address:", token.address);
+  console.log("Turing address:", turing.address);
 
-  // We also save the contract's artifacts and address in the frontend directory
-  saveFrontendFiles(token);
+  // Salva ABI e endereco do contrato no frontend (src/contracts/, ignorado pelo git).
+  saveFrontendFiles(turing);
 }
 
-function saveFrontendFiles(token) {
+function saveFrontendFiles(turing) {
   const fs = require("fs");
   const contractsDir = path.join(__dirname, "..", "frontend", "src", "contracts");
 
@@ -42,14 +41,14 @@ function saveFrontendFiles(token) {
 
   fs.writeFileSync(
     path.join(contractsDir, "contract-address.json"),
-    JSON.stringify({ Token: token.address }, undefined, 2)
+    JSON.stringify({ Turing: turing.address }, undefined, 2)
   );
 
-  const TokenArtifact = artifacts.readArtifactSync("Turing");
+  const TuringArtifact = artifacts.readArtifactSync("Turing");
 
   fs.writeFileSync(
-    path.join(contractsDir, "Token.json"),
-    JSON.stringify(TokenArtifact, null, 2)
+    path.join(contractsDir, "Turing.json"),
+    JSON.stringify(TuringArtifact, null, 2)
   );
 }
 
