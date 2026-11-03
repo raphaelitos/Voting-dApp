@@ -37,7 +37,7 @@ export function Dapp() {
   const [notice, setNotice] = useState();
 
   const contractRef = useRef();
-  const refreshRef = useRef(async () => {});
+  const refreshRef = useRef(async () => { });
 
   // ---- Conexao da carteira e rede ---------------------------------------------
 
@@ -69,6 +69,28 @@ export function Dapp() {
 
   // Reconecta sozinho se o site ja foi autorizado (nao abre pop-up), e reage a
   // troca de conta / troca de rede na carteira.
+
+  // Abre o seletor de contas da carteira (MetaMask) para autorizar/escolher outra conta.
+  // Sem isso, o site so enxerga as contas que ja foram conectadas a ele.
+  const switchAccount = useCallback(async () => {
+    try {
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+      const [selected] = await window.ethereum.request({ method: "eth_accounts" });
+      if (selected && selected.toLowerCase() !== account?.toLowerCase()) {
+        setSnapshot(undefined);
+        setNotice(undefined);
+        setTxError(undefined);
+        setAccount(selected);
+      }
+    } catch (error) {
+      if (!isUserRejection(error)) setTxError(friendlyError(error));
+    }
+  }, [account]);
+
+
   useEffect(() => {
     if (!window.ethereum) return undefined;
 
@@ -77,7 +99,7 @@ export function Dapp() {
       .then(async ([selected]) => {
         if (selected && (await ensureNetwork())) setAccount(selected);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     const onAccountsChanged = ([newAccount]) => {
       // undefined: o usuario revogou o acesso do site na carteira
@@ -228,7 +250,7 @@ export function Dapp() {
 
   return (
     <div className="container app-container">
-      <Header tokenData={tokenData} snapshot={snapshot} />
+      <Header tokenData={tokenData} snapshot={snapshot} onSwitchAccount={switchAccount} />
 
       {txBeingSent && <WaitingForTransactionMessage txHash={txBeingSent} />}
       {txError && (
@@ -270,8 +292,8 @@ export function Dapp() {
           ) : (
             <div className="alert alert-secondary" data-testid="cannot-vote">
               {snapshot.isAdmin
-                ? "Sua conta é superusuária, mas não está cadastrada como votante: a opção de votar fica indisponível."
-                : "Sua conta não está cadastrada. Somente usuários pré-autorizados podem votar; você ainda pode acompanhar o ranking."}
+                ? "Sua conta é superusuária, mas não está cadastrada como votante, então não pode votar. Para votar, use \"Trocar conta\" e escolha uma conta cadastrada (nome1 a nome5)."
+                : "Sua conta não está cadastrada. Somente usuários pré-autorizados podem votar; use \"Trocar conta\" para escolher outra, ou apenas acompanhe o ranking."}
             </div>
           )}
         </div>

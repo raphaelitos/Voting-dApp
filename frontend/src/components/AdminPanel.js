@@ -31,6 +31,11 @@ export function AdminPanel({ snapshot, busy, onIssue, onVotingOn, onVotingOff })
             Encerrar votação
           </button>
         </div>
+        <small className="form-text text-muted mt-n3 mb-4">
+          {votingActive
+            ? "A votação está aberta: só \"Encerrar votação\" está disponível."
+            : "A votação está encerrada: só \"Abrir votação\" está disponível."}
+        </small>
 
         <h3 className="h6">Emitir Turings</h3>
         <IssueTokenForm busy={busy} onIssue={onIssue} />

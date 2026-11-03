@@ -4,7 +4,7 @@ import { shortAddress } from "../lib/turing";
 
 // Topo da pagina: token, quem esta conectado, papel (superusuario/votante) e
 // se a votacao esta aberta.
-export function Header({ tokenData, snapshot }) {
+export function Header({ tokenData, snapshot, onSwitchAccount }) {
   const { account, codinome, podeVotar, isAdmin, votingActive, meuSaldo } = snapshot;
 
   return (
@@ -29,6 +29,13 @@ export function Header({ tokenData, snapshot }) {
             {podeVotar ? <b>{rotulo(codinome)}</b> : <b>Sem codinome</b>}{" "}
             <span className="text-muted">({shortAddress(account)})</span>
           </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-light mt-1"
+            onClick={onSwitchAccount}
+          >
+            Trocar conta
+          </button>
         </div>
         <div>
           {isAdmin && <span className="badge badge-warning mr-1">Superusuário</span>}

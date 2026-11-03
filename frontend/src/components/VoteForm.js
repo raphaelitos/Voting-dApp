@@ -72,6 +72,9 @@ export function VoteForm({ snapshot, busy, onVote }) {
           <button className="btn btn-primary btn-block" type="submit" disabled={!podeEnviar}>
             Votar
           </button>
+          {votingActive && candidato === "" && (
+            <small className="form-text text-muted">Escolha um aluno para habilitar o botão.</small>
+          )}
         </form>
         <small className="form-text text-muted mt-3">
           Seus votos: <b>{votos}</b>. Faltam <b>{votosParaBonus}</b> para ganhar 1 Turing de

@@ -53,6 +53,9 @@ export function IssueTokenForm({ busy, onIssue }) {
       <button className="btn btn-warning btn-block" type="submit" disabled={!podeEnviar}>
         Emitir Turings
       </button>
+      {alvo === "" && (
+        <small className="form-text text-muted">Escolha um aluno para habilitar o botão.</small>
+      )}
     </form>
   );
 }
