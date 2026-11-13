@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ALUNOS, VOTE_MAX, VOTE_MIN, VOTES_PER_BONUS, rotulo } from "../config";
+import { ALUNOS, VOTE_MAX, VOTE_MIN, rotulo } from "../config";
 
 // Funcao `vote(codinome, qtde)`. Campo para escolher o aluno (sem a professora, e
 // sem o proprio usuario) e campo para a quantidade de Turings (1 a 2).
@@ -78,7 +78,7 @@ export function VoteForm({ snapshot, busy, onVote }) {
         </form>
         <small className="form-text text-muted mt-3">
           Seus votos: <b>{votos}</b>. Faltam <b>{votosParaBonus}</b> para ganhar 1 Turing de
-          bônus (a cada {VOTES_PER_BONUS} votos).
+          bônus.
         </small>
       </div>
     </section>
